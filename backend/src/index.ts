@@ -313,6 +313,105 @@ app.post('/leads/verify-emails', async (req: Request, res: Response) => {
   }
 })
 
+app.post('/leads/enrich-phones', async (req: Request, res: Response) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'Request body is required and must be valid JSON' })
+  }
+
+  const { leadIds } = req.body as { leadIds?: number[] }
+
+  if (!Array.isArray(leadIds) || leadIds.length === 0) {
+    return res.status(400).json({ error: 'leadIds must be a non-empty array' })
+  }
+
+  try {
+    const leads = await prisma.lead.findMany({
+      where: { id: { in: leadIds.map((id) => Number(id)) } },
+    })
+
+    if (leads.length === 0) {
+      return res.status(404).json({ error: 'No leads found with the provided IDs' })
+    }
+
+    const connection = await Connection.connect({ address: 'localhost:7233' })
+    const client = new Client({ connection, namespace: 'default' })
+
+    const results: Array<{ leadId: number; status: string; phone?: string; provider?: string }> = []
+    const errors: Array<{ leadId: number; leadName: string; error: string }> = []
+
+    // Update all leads to pending status first
+    await prisma.lead.updateMany({
+      where: { id: { in: leads.map((l) => l.id) } },
+      data: { phoneEnrichmentStatus: 'pending' },
+    })
+
+    for (const lead of leads) {
+      try {
+        // Use idempotent workflow ID to ensure only one workflow per lead
+        const workflowId = `enrich-phone-${lead.id}`
+
+        // Import phoneWaterfallWorkflow dynamically to avoid circular imports
+        const { phoneWaterfallWorkflow } = await import('./workflows')
+
+        const result = await client.workflow.execute(phoneWaterfallWorkflow, {
+          taskQueue: 'myQueue',
+          workflowId,
+          args: [
+            {
+              firstName: lead.firstName,
+              lastName: lead.lastName,
+              email: lead.email,
+              jobTitle: lead.jobTitle,
+              companyName: lead.companyName,
+            },
+          ],
+        })
+
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: {
+            phone: result.phone,
+            phoneEnrichmentStatus: result.status,
+          },
+        })
+
+        results.push({
+          leadId: lead.id,
+          status: result.status,
+          phone: result.phone || undefined,
+          provider: result.provider || undefined,
+        })
+      } catch (error) {
+        // Check if it's a workflow already running error
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+        if (errorMessage.includes('already running')) {
+          results.push({ leadId: lead.id, status: 'pending' })
+        } else {
+          await prisma.lead.update({
+            where: { id: lead.id },
+            data: { phoneEnrichmentStatus: 'error' },
+          })
+
+          errors.push({
+            leadId: lead.id,
+            leadName: `${lead.firstName} ${lead.lastName}`.trim(),
+            error: errorMessage,
+          })
+        }
+      }
+    }
+
+    await connection.close()
+
+    const foundCount = results.filter((r) => r.status === 'found').length
+    res.json({ success: true, foundCount, results, errors })
+  } catch (error) {
+    console.error('Error enriching phones:', error)
+    res.status(500).json({ error: 'Failed to enrich phones' })
+  }
+})
+
 app.listen(4000, () => {
   console.log('Express server is running on port 4000')
 })
