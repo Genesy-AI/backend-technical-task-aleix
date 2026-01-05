@@ -1,8 +1,16 @@
 import { proxyActivities } from '@temporalio/workflow'
 import type * as activities from './activities'
 
+/**
+ * Email verification activities
+ */
 const { verifyEmail } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '1 second',
+  startToCloseTimeout: '5 seconds',
+  retry: {
+    maximumAttempts: 3,
+    backoffCoefficient: 2,
+    initialInterval: '1s',
+  },
 })
 
 /**
