@@ -25,7 +25,7 @@ export interface PhoneResult {
  * Best data in the market, but slow and fails sometimes
  * Base URL: https://api.genesy.ai/api/tmp/orionConnect
  * Request: { "fullName": "Ada Lovelace", "companyWebsite": "example.com" }
- * Authentication: Request header 'x-auth-me' with key 'mySecretKey123'
+ * Authentication: Request header 'x-auth-me' with key
  * Response: { "phone": string | null }
  */
 export async function lookupOrionConnect(input: OrionConnectInput): Promise<string | null> {
@@ -34,7 +34,7 @@ export async function lookupOrionConnect(input: OrionConnectInput): Promise<stri
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-auth-me': 'mySecretKey123',
+      'x-auth-me': process.env.ORION_CONNECT_API_KEY!,
     },
     body: JSON.stringify({ fullName, companyWebsite: input.companyWebsite }),
   })
@@ -52,7 +52,7 @@ export async function lookupOrionConnect(input: OrionConnectInput): Promise<stri
  * Worst data in the market, but is the fastest one
  * Base URL: https://api.genesy.ai/api/tmp/astraDialer
  * Request: { "email": "john.doe@example.com" }
- * Authentication: Request header 'apiKey' with key '1234jhgf'
+ * Authentication: Request header 'apiKey' with key
  * Response: { "phoneNmbr": string | null | undefined }
  */
 export async function lookupAstraDialer(input: AstraDialerInput): Promise<string | null> {
@@ -60,7 +60,7 @@ export async function lookupAstraDialer(input: AstraDialerInput): Promise<string
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      apiKey: '1234jhgf',
+      apiKey: process.env.ASTRA_DIALER_API_KEY!,
     },
     body: JSON.stringify({ email: input.email }),
   })
@@ -78,12 +78,12 @@ export async function lookupAstraDialer(input: AstraDialerInput): Promise<string
  * New provider in the market
  * Base URL: https://api.genesy.ai/api/tmp/numbusLookup
  * Request: { "email": "john.doe@example.com", "jobTitle": "CTO" }
- * Authentication: Get parameter 'api' with key '000099998888'
+ * Authentication: Get parameter 'api' with key
  * Response: { "number": number, "countryCode": "string" }
  */
 export async function lookupNimbusLookup(input: NimbusLookupInput): Promise<string | null> {
   const url = new URL('https://api.genesy.ai/api/tmp/numbusLookup')
-  url.searchParams.set('api', '000099998888')
+  url.searchParams.set('api', process.env.NIMBUS_LOOKUP_API_KEY!)
 
   const response = await fetch(url.toString(), {
     method: 'POST',
