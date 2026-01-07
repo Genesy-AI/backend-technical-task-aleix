@@ -17,15 +17,16 @@ const { verifyEmail } = proxyActivities<typeof activities>({
  * Phone lookup activities
  * Each provider has its own activity with appropriate timeout and retry
  */
-const { lookupPhoneOrionConnect, lookupPhoneAstraDialer, lookupPhoneNimbusLookup } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: '5 seconds',
-    retry: {
-      maximumAttempts: 3,
-      backoffCoefficient: 2,
-      initialInterval: '1s',
-    },
-  })
+const { lookupPhoneOrionConnect, lookupPhoneAstraDialer, lookupPhoneNimbusLookup } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: '5 seconds',
+  retry: {
+    maximumAttempts: 3,
+    backoffCoefficient: 2,
+    initialInterval: '1s',
+  },
+})
 
 export async function verifyEmailWorkflow(email: string): Promise<boolean> {
   return await verifyEmail(email)
@@ -58,9 +59,12 @@ export interface PhoneWaterfallResult {
 export async function phoneWaterfallWorkflow(input: PhoneWaterfallInput): Promise<PhoneWaterfallResult> {
   // Provider 1: Orion Connect (best data, but slow)
   try {
-    let companyWebsite = input.companyWebsite;
-    if (!companyWebsite) { // Fallback to companyName if companyWebsite is not provided
-      companyWebsite = input.companyName ? input.companyName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com' : 'unknown.com'
+    let companyWebsite = input.companyWebsite
+    if (!companyWebsite) {
+      // Fallback to companyName if companyWebsite is not provided
+      companyWebsite = input.companyName
+        ? input.companyName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com'
+        : 'unknown.com'
     }
     const phone = await lookupPhoneOrionConnect({
       firstName: input.firstName,
