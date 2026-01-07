@@ -1,31 +1,36 @@
-import { proxyActivities } from '@temporalio/workflow'
+import { proxyActivities, ActivityOptions } from '@temporalio/workflow'
 import type * as activities from './activities'
+
+const defaultActivityOptions: ActivityOptions = {
+  startToCloseTimeout: '5 seconds',
+  retry: {
+    maximumAttempts: 3,
+    backoffCoefficient: 2,
+    initialInterval: '1s',
+  },
+}
 
 /**
  * Email verification activities
  */
-const { verifyEmail } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '5 seconds',
-  retry: {
-    maximumAttempts: 3,
-    backoffCoefficient: 2,
-    initialInterval: '1s',
-  },
-})
+const { verifyEmail } = proxyActivities<typeof activities>(defaultActivityOptions)
 
 /**
- * Phone lookup activities
- * Each provider has its own activity with appropriate timeout and retry
+ * Phone lookup activities - Split into separate proxies for Task Queue rate limiting
  */
-const { lookupPhoneOrionConnect, lookupPhoneAstraDialer, lookupPhoneNimbusLookup } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: '5 seconds',
-  retry: {
-    maximumAttempts: 3,
-    backoffCoefficient: 2,
-    initialInterval: '1s',
-  },
+const { lookupPhoneOrionConnect } = proxyActivities<typeof activities>({
+  ...defaultActivityOptions,
+  taskQueue: 'orion-lookup-queue',
+})
+
+const { lookupPhoneAstraDialer } = proxyActivities<typeof activities>({
+  ...defaultActivityOptions,
+  taskQueue: 'astra-lookup-queue',
+})
+
+const { lookupPhoneNimbusLookup } = proxyActivities<typeof activities>({
+  ...defaultActivityOptions,
+  taskQueue: 'nimbus-lookup-queue',
 })
 
 export async function verifyEmailWorkflow(email: string): Promise<boolean> {

@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
 import express, { Request, Response } from 'express'
 import { Connection, Client } from '@temporalio/client'
+import { z } from 'zod'
 import { verifyEmailWorkflow } from './workflows'
 import { generateMessageFromTemplate } from './utils/messageGenerator'
 import { runTemporalWorker } from './worker'
@@ -314,16 +315,21 @@ app.post('/leads/verify-emails', async (req: Request, res: Response) => {
   }
 })
 
+const EnrichPhonesSchema = z.object({
+  leadIds: z.array(z.number()).min(1, 'leadIds must be a non-empty array'),
+})
+
 app.post('/leads/enrich-phones', async (req: Request, res: Response) => {
-  if (!req.body || typeof req.body !== 'object') {
-    return res.status(400).json({ error: 'Request body is required and must be valid JSON' })
+  const validation = EnrichPhonesSchema.safeParse(req.body)
+
+  if (!validation.success) {
+    return res.status(400).json({
+      error: 'Invalid request data',
+      details: validation.error.issues.map((e: z.ZodIssue) => e.message),
+    })
   }
 
-  const { leadIds } = req.body as { leadIds?: number[] }
-
-  if (!Array.isArray(leadIds) || leadIds.length === 0) {
-    return res.status(400).json({ error: 'leadIds must be a non-empty array' })
-  }
+  const { leadIds } = validation.data
 
   try {
     const leads = await prisma.lead.findMany({
@@ -349,7 +355,7 @@ app.post('/leads/enrich-phones', async (req: Request, res: Response) => {
     for (const lead of leads) {
       try {
         // Use idempotent workflow ID to ensure only one workflow per lead
-        const workflowId = `enrich-phone-${lead.id}`
+        const workflowId = `enrich-phone-${lead.id}-${Date.now()}`
 
         // Import phoneWaterfallWorkflow dynamically to avoid circular imports
         const { phoneWaterfallWorkflow } = await import('./workflows')
