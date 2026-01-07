@@ -274,8 +274,8 @@ app.post('/leads/verify-emails', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'No leads found with the provided IDs' })
     }
 
-    const connection = await Connection.connect({ address: 'localhost:7233' })
-    const client = new Client({ connection, namespace: 'default' })
+    const connection = await Connection.connect({ address: process.env.TEMPORAL_ADDRESS || 'localhost:7233' })
+    const client = new Client({ connection, namespace: process.env.TEMPORAL_NAMESPACE || 'default' })
 
     let verifiedCount = 0
     const results: Array<{ leadId: number; emailVerified: boolean }> = []
@@ -284,7 +284,7 @@ app.post('/leads/verify-emails', async (req: Request, res: Response) => {
     for (const lead of leads) {
       try {
         const isVerified = await client.workflow.execute(verifyEmailWorkflow, {
-          taskQueue: 'myQueue',
+          taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'myQueue',
           workflowId: `verify-email-${lead.id}-${Date.now()}`,
           args: [lead.email],
         })
@@ -334,8 +334,8 @@ app.post('/leads/enrich-phones', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'No leads found with the provided IDs' })
     }
 
-    const connection = await Connection.connect({ address: 'localhost:7233' })
-    const client = new Client({ connection, namespace: 'default' })
+    const connection = await Connection.connect({ address: process.env.TEMPORAL_ADDRESS || 'localhost:7233' })
+    const client = new Client({ connection, namespace: process.env.TEMPORAL_NAMESPACE || 'default' })
 
     const results: Array<{ leadId: number; status: string; phone?: string; provider?: string }> = []
     const errors: Array<{ leadId: number; leadName: string; error: string }> = []
@@ -355,7 +355,7 @@ app.post('/leads/enrich-phones', async (req: Request, res: Response) => {
         const { phoneWaterfallWorkflow } = await import('./workflows')
 
         const result = await client.workflow.execute(phoneWaterfallWorkflow, {
-          taskQueue: 'myQueue',
+          taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'myQueue',
           workflowId,
           args: [
             {
@@ -413,8 +413,9 @@ app.post('/leads/enrich-phones', async (req: Request, res: Response) => {
   }
 })
 
-app.listen(4000, () => {
-  console.log('Express server is running on port 4000')
+const PORT = process.env.PORT || 4000
+app.listen(PORT, () => {
+  console.log(`Express server is running on port ${PORT}`)
 })
 
 runTemporalWorker().catch((err) => {

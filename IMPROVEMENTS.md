@@ -40,17 +40,14 @@ model lead {
 ---
 
 ### 3. Environment Configuration
-**Effort:** Low | **Impact:** High
+**Effort:** Low | **Impact:** Medium
 
 **Current State:**
-- Hardcoded values (Temporal address, port numbers)
 - No validation of required environment variables at startup
 
 **Proposed Changes:**
 - Use `envalid` or similar for typed env validation
-- Document all variables in `.env.sample`
 - Fail fast on missing required configuration
-- Move provider API keys to environment variables
 
 ---
 
