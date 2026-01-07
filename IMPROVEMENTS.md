@@ -19,6 +19,9 @@ This document outlines proposed improvements to the codebase, organized by prior
 - Use generated types on the frontend (e.g., via `openapi-typescript`)
 - Add response validation in development mode
 
+**Implemented**: 
+[x] Added Zod for runtime request validation in `/leads/enrich-phones`
+
 ---
 
 ### 2. Database Indexing & Query Optimization
@@ -142,9 +145,12 @@ src/
 ### 9. API Rate Limiting
 **Effort:** Low | **Impact:** Low (until scale)
 
+**Current State:**
+- [x] **Implemented**: Phone provider rate limiting using dedicated Temporal Task Queues and worker-side RPS throttling.
+- [ ] **Pending**: Frontend API rate limiting (Express middleware).
+
 **Proposed Changes:**
-- Add rate limiting middleware (express-rate-limit)
-- Implement per-provider rate limiters for external APIs
-- Add retry-after headers for rate limited responses
+- Add rate limiting middleware (express-rate-limit) for general backend API endpoints.
+- Add retry-after headers for rate limited responses.
 
 ---
